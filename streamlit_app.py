@@ -4,9 +4,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from catboost import CatBoostRegressor, Pool
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 import re
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
+
+# Add a header banner
+st.markdown(
+    """
+    <div style='background-color:#4CAF50;padding:10px;border-radius:10px;margin-bottom:20px'>
+        <h1 style='color:white;text-align:center;font-family:sans-serif;'>AiAcademy Course - Mobile Phone Price Predictor</h1>
+    </div>
+    """, unsafe_allow_html=True
+)
 
 @st.cache_data
 def load_data():
@@ -57,17 +67,31 @@ st.markdown("### ⚙️ Model Training")
 
 X = data.drop("Price", axis=1)
 y = data["Price"]
-cat_idx = [X.columns.get_loc(c) for c in cat_features]
 
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-train_pool = Pool(X_train, y_train, cat_features=cat_idx)
-test_pool = Pool(X_test, y_test, cat_features=cat_idx)
+# Initialize CatBoost Regressor with early stopping and more parameters
+model = CatBoostRegressor(
+    iterations=200,
+    max_depth=2,
+    verbose=0,
+    early_stopping_rounds=50
+)
 
-model = CatBoostRegressor(verbose=0)
-model.fit(train_pool)
+# Fit model with categorical features by name
+model.fit(
+    X_train, y_train,
+    cat_features=cat_features,
+    eval_set=(X_test, y_test)
+)
 
 st.success("Model trained successfully!")
+
+# Evaluate model performance
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+st.write(f"Mean Squared Error on test set: {mse:.2f}")
 
 st.markdown("### 🎛 Predict Phone Price")
 
