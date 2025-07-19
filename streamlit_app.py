@@ -72,8 +72,6 @@ st.success("Model trained successfully!")
 
 # Predict and evaluate
 y_pred = model.predict(X_test)
-mse = mean_squared_error(y_test, y_pred)
-st.write(f"Mean Squared Error on test set: {mse:.2f}")
 
 st.markdown("### 🎛 Predict Phone Price")
 
