@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
 from catboost import CatBoostRegressor, Pool
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import re
+import seaborn as sns
+
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
 
