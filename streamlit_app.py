@@ -34,17 +34,20 @@ st.markdown("### 📊 Data Visualizations")
 col1, col2 = st.columns(2)
 
 with col1:
-    fig1, ax1 = plt.subplots(figsize=(10,6))
+    fig1, ax1 = plt.subplots(figsize=(10, 6))
     sns.boxplot(data=data, x="Brand", y="Price", ax=ax1)
     ax1.set_title("Price Distribution by Brand")
     ax1.tick_params(axis='x', rotation=90)
     st.pyplot(fig1)
 
 with col2:
-    fig2, ax2 = plt.subplots(figsize=(10,6))
-    sns.scatterplot(data=data, x="Total_Camera_MP", y="Price", hue="Brand", ax=ax2)
-    ax2.set_title("Total Camera MP vs Price")
-    ax2.tick_params(axis='x', rotation=90)
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+    if data["Total_Camera_MP"].notnull().sum() > 0:
+        sns.scatterplot(data=data, x="Total_Camera_MP", y="Price", hue="Brand", ax=ax2)
+        ax2.set_title("Total Camera MP vs Price")
+        ax2.tick_params(axis='x', rotation=90)
+    else:
+        ax2.text(0.5, 0.5, "No Camera (MP) data", ha='center', va='center', fontsize=14)
     st.pyplot(fig2)
 
 st.markdown("### ⚙️ Model Training")
@@ -74,6 +77,7 @@ st.write(f"Mean Squared Error on test set: {mse:.2f}")
 
 st.markdown("### 🎛 Predict Phone Price")
 
+# Sidebar inputs
 brand = st.sidebar.selectbox("Brand", sorted(data["Brand"].unique()))
 model_name = st.sidebar.selectbox("Model", sorted(data[data["Brand"] == brand]["Model"].unique()))
 
