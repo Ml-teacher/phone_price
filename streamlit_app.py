@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
-import seaborn as sns
 from sklearn.metrics import mean_squared_error
+import seaborn as sns
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
 
@@ -20,7 +20,6 @@ st.markdown(
 @st.cache_data
 def load_data():
     df = pd.read_csv("Mobile phone pricee.csv")
-    # No preprocessing here — load raw data directly
     return df
 
 data = load_data()
@@ -35,19 +34,17 @@ st.markdown("### 📊 Data Visualizations")
 col1, col2 = st.columns(2)
 
 with col1:
-    fig1, ax1 = plt.subplots()
+    fig1, ax1 = plt.subplots(figsize=(10,6))
     sns.boxplot(data=data, x="Brand", y="Price", ax=ax1)
     ax1.set_title("Price Distribution by Brand")
+    ax1.tick_params(axis='x', rotation=90)
     st.pyplot(fig1)
 
 with col2:
-    fig2, ax2 = plt.subplots()
-    # Assuming 'Camera (MP)' column exists; else adapt or skip
-    if 'Camera (MP)' in data.columns:
-        sns.scatterplot(data=data, x="Camera (MP)", y="Price", hue="Brand", ax=ax2)
-        ax2.set_title("Camera MP vs Price")
-    else:
-        ax2.text(0.5, 0.5, "No Camera (MP) data", ha='center')
+    fig2, ax2 = plt.subplots(figsize=(10,6))
+    sns.scatterplot(data=data, x="Total_Camera_MP", y="Price", hue="Brand", ax=ax2)
+    ax2.set_title("Total Camera MP vs Price")
+    ax2.tick_params(axis='x', rotation=90)
     st.pyplot(fig2)
 
 st.markdown("### ⚙️ Model Training")
@@ -72,27 +69,28 @@ st.success("Model trained successfully!")
 
 # Predict and evaluate
 y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+st.write(f"Mean Squared Error on test set: {mse:.2f}")
 
 st.markdown("### 🎛 Predict Phone Price")
 
 brand = st.sidebar.selectbox("Brand", sorted(data["Brand"].unique()))
 model_name = st.sidebar.selectbox("Model", sorted(data[data["Brand"] == brand]["Model"].unique()))
 
-# For other numerical features, use min/max from raw data or hardcode reasonable ranges:
 storage = st.sidebar.slider("Storage (GB)", int(data['Storage'].min()), int(data['Storage'].max()), step=32)
 ram = st.sidebar.slider("RAM (GB)", int(data['RAM'].min()), int(data['RAM'].max()), step=2)
-screen = st.sidebar.slider("Screen Size (inches)", float(data['Screen Size (inches)'].min()), float(data['Screen Size (inches)'].max()), step=0.1)
-battery = st.sidebar.slider("Battery Capacity (mAh)", int(data['Battery Capacity (mAh)'].min()), int(data['Battery Capacity (mAh)'].max()), step=100)
-camera_mp = st.sidebar.slider("Camera (MP)", int(data['Camera (MP)'].min()), int(data['Camera (MP)'].max()), step=5)
+screen_size = st.sidebar.slider("Screen Size (inches)", float(data['Screen_Size'].min()), float(data['Screen_Size'].max()), step=0.1)
+battery = st.sidebar.slider("Battery Capacity (mAh)", int(data['Battery'].min()), int(data['Battery'].max()), step=100)
+camera_mp = st.sidebar.slider("Total Camera MP", int(data['Total_Camera_MP'].min()), int(data['Total_Camera_MP'].max()), step=5)
 
 input_df = pd.DataFrame([{
     "Brand": brand,
     "Model": model_name,
     "Storage": storage,
     "RAM": ram,
-    "Screen Size (inches)": screen,
-    "Battery Capacity (mAh)": battery,
-    "Camera (MP)": camera_mp
+    "Screen_Size": screen_size,
+    "Battery": battery,
+    "Total_Camera_MP": camera_mp
 }])
 
 prediction = model.predict(input_df)[0]
