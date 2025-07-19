@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import seaborn as sns
 
-st.set_page_config(page_title="Phone Price Predictor", layout="wide")
+st.set_page_config(page_title="fasd Price Predictor", layout="wide")
 
 # Header banner
 st.markdown(
