@@ -5,11 +5,10 @@ from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import seaborn as sns
-import re
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
 
-# Add a header banner
+# Header banner
 st.markdown(
     """
     <div style='background-color:#4CAF50;padding:10px;border-radius:10px;margin-bottom:20px'>
@@ -23,33 +22,31 @@ def load_data():
     df = pd.read_csv("Mobile phone pricee.csv")
     df.columns = df.columns.str.strip()
 
-    # Convert to string first to avoid .str accessor error, then clean and convert to int
+    # Clean and convert Storage column
     df['Storage'] = df['Storage'].fillna("").astype(str).str.replace("GB", "").str.strip()
     df['Storage'] = pd.to_numeric(df['Storage'], errors='coerce').fillna(0).astype(int)
 
+    # Clean and convert RAM column
     df['RAM'] = df['RAM'].fillna("").astype(str).str.replace("GB", "").str.strip()
     df['RAM'] = pd.to_numeric(df['RAM'], errors='coerce').fillna(0).astype(int)
 
+    # Rename battery column if needed
     df.rename(columns={'Battery Capacity (mAh)': 'Battery'}, inplace=True)
 
-    def total_camera_mp(s):
-        numbers = re.findall(r'\d+\.?\d*', str(s))
-        return sum(float(n) for n in numbers)
-
-    df['Total_Camera_MP'] = df['Camera (MP)'].apply(total_camera_mp)
-    df.drop(columns=['Camera (MP)'], inplace=True)
-
+    # Rename screen size and price columns
     df.rename(columns={
         'Screen Size (inches)': 'Screen_Size',
         'Price ($)': 'Price'
     }, inplace=True)
 
-    # Optional: fill or drop any missing values here if needed
+    # Fill any remaining missing values
     df.fillna(0, inplace=True)
 
     return df
 
 data = load_data()
+
+# Define categorical features
 cat_features = ['Brand', 'Model']
 
 st.title("📱 Mobile Phone Price Predictor")
@@ -82,7 +79,7 @@ y = data["Price"]
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize CatBoost Regressor with early stopping
+# Initialize CatBoost Regressor
 model = CatBoostRegressor(
     iterations=200,
     max_depth=2,
@@ -90,7 +87,7 @@ model = CatBoostRegressor(
     early_stopping_rounds=50
 )
 
-# Fit model with categorical features by name
+# Train model with categorical features by name
 model.fit(
     X_train, y_train,
     cat_features=cat_features,
@@ -99,7 +96,7 @@ model.fit(
 
 st.success("Model trained successfully!")
 
-# Evaluate model performance
+# Model evaluation
 y_pred = model.predict(X_test)
 mse = mean_squared_error(y_test, y_pred)
 st.write(f"Mean Squared Error on test set: {mse:.2f}")
