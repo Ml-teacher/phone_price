@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from catboost import CatBoostRegressor, Pool
+from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-import re
 import seaborn as sns
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
@@ -21,31 +20,7 @@ st.markdown(
 @st.cache_data
 def load_data():
     df = pd.read_csv("Mobile phone pricee.csv")
-    df.columns = df.columns.str.strip()
-    # Convert Storage and RAM to integer
-    df['Storage'] = df['Storage'].str.replace("GB", "").str.strip().astype(int)
-    df['RAM'] = df['RAM'].str.replace("GB", "").str.strip().astype(int)
-    # Rename battery column
-    df.rename(columns={'Battery Capacity (mAh)': 'Battery'}, inplace=True)
-
-    # Calculate total camera MP if the column exists
-    if 'Camera (MP)' in df.columns:
-        def total_camera_mp(s):
-            numbers = re.findall(r'\d+\.?\d*', str(s))
-            return sum(float(n) for n in numbers)
-        df['Total_Camera_MP'] = df['Camera (MP)'].apply(total_camera_mp)
-        df.drop(columns=['Camera (MP)'], inplace=True)
-    else:
-        # If already exists or missing, do nothing or ensure it's int
-        if 'Total_Camera_MP' not in df.columns:
-            df['Total_Camera_MP'] = 0  # fallback value
-
-    # Rename columns for consistency
-    df.rename(columns={
-        'Screen Size (inches)': 'Screen_Size',
-        'Price ($)': 'Price'
-    }, inplace=True)
-
+    # No preprocessing here — load raw data directly
     return df
 
 data = load_data()
@@ -67,8 +42,12 @@ with col1:
 
 with col2:
     fig2, ax2 = plt.subplots()
-    sns.scatterplot(data=data, x="Total_Camera_MP", y="Price", hue="Brand", ax=ax2)
-    ax2.set_title("Camera MP vs Price")
+    # Assuming 'Camera (MP)' column exists; else adapt or skip
+    if 'Camera (MP)' in data.columns:
+        sns.scatterplot(data=data, x="Camera (MP)", y="Price", hue="Brand", ax=ax2)
+        ax2.set_title("Camera MP vs Price")
+    else:
+        ax2.text(0.5, 0.5, "No Camera (MP) data", ha='center')
     st.pyplot(fig2)
 
 st.markdown("### ⚙️ Model Training")
@@ -80,23 +59,19 @@ y = data["Price"]
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Create Pools with categorical features for CatBoost
-train_pool = Pool(X_train, y_train, cat_features=cat_features)
-eval_pool = Pool(X_test, y_test, cat_features=cat_features)
-
-# Initialize and train model
+# Initialize and train CatBoost with categorical feature names directly
 model = CatBoostRegressor(
     iterations=200,
     max_depth=2,
     verbose=0,
     early_stopping_rounds=50
 )
-model.fit(train_pool, eval_set=eval_pool)
+model.fit(X_train, y_train, cat_features=cat_features, eval_set=(X_test, y_test))
 
 st.success("Model trained successfully!")
 
 # Predict and evaluate
-y_pred = model.predict(eval_pool)
+y_pred = model.predict(X_test)
 mse = mean_squared_error(y_test, y_pred)
 st.write(f"Mean Squared Error on test set: {mse:.2f}")
 
@@ -104,25 +79,25 @@ st.markdown("### 🎛 Predict Phone Price")
 
 brand = st.sidebar.selectbox("Brand", sorted(data["Brand"].unique()))
 model_name = st.sidebar.selectbox("Model", sorted(data[data["Brand"] == brand]["Model"].unique()))
-storage = st.sidebar.slider("Storage (GB)", 32, 512, step=32)
-ram = st.sidebar.slider("RAM (GB)", 2, 24, step=2)
-screen = st.sidebar.slider("Screen Size (inches)", 4.0, 7.5, step=0.1)
-battery = st.sidebar.slider("Battery Capacity (mAh)", 2000, 6000, step=100)
-camera_mp = st.sidebar.slider("Total Camera MP", 5, 200, step=5)
+
+# For other numerical features, use min/max from raw data or hardcode reasonable ranges:
+storage = st.sidebar.slider("Storage (GB)", int(data['Storage'].min()), int(data['Storage'].max()), step=32)
+ram = st.sidebar.slider("RAM (GB)", int(data['RAM'].min()), int(data['RAM'].max()), step=2)
+screen = st.sidebar.slider("Screen Size (inches)", float(data['Screen Size (inches)'].min()), float(data['Screen Size (inches)'].max()), step=0.1)
+battery = st.sidebar.slider("Battery Capacity (mAh)", int(data['Battery Capacity (mAh)'].min()), int(data['Battery Capacity (mAh)'].max()), step=100)
+camera_mp = st.sidebar.slider("Camera (MP)", int(data['Camera (MP)'].min()), int(data['Camera (MP)'].max()), step=5)
 
 input_df = pd.DataFrame([{
     "Brand": brand,
     "Model": model_name,
     "Storage": storage,
     "RAM": ram,
-    "Screen_Size": screen,
-    "Battery": battery,
-    "Total_Camera_MP": camera_mp
+    "Screen Size (inches)": screen,
+    "Battery Capacity (mAh)": battery,
+    "Camera (MP)": camera_mp
 }])
 
-# Use Pool to specify categorical features for prediction
-input_pool = Pool(input_df, cat_features=cat_features)
-prediction = model.predict(input_pool)[0]
+prediction = model.predict(input_df)[0]
 
 st.sidebar.markdown("## 💰 Predicted Price:")
 st.sidebar.markdown(f"### ${prediction:,.2f}")
