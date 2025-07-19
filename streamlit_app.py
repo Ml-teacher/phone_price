@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from catboost import CatBoostRegressor, Pool
+from catboost import CatBoostRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import re
 import seaborn as sns
-
 
 st.set_page_config(page_title="Phone Price Predictor", layout="wide")
 
@@ -23,8 +22,14 @@ st.markdown(
 def load_data():
     df = pd.read_csv("Mobile phone pricee.csv")
     df.columns = df.columns.str.strip()
-    df['Storage'] = df['Storage'].str.replace("GB", "").str.strip().astype(int)
-    df['RAM'] = df['RAM'].str.replace("GB", "").str.strip().astype(int)
+
+    # Convert to string first to avoid .str accessor error, then clean and convert to int
+    df['Storage'] = df['Storage'].fillna("").astype(str).str.replace("GB", "").str.strip()
+    df['Storage'] = pd.to_numeric(df['Storage'], errors='coerce').fillna(0).astype(int)
+
+    df['RAM'] = df['RAM'].fillna("").astype(str).str.replace("GB", "").str.strip()
+    df['RAM'] = pd.to_numeric(df['RAM'], errors='coerce').fillna(0).astype(int)
+
     df.rename(columns={'Battery Capacity (mAh)': 'Battery'}, inplace=True)
 
     def total_camera_mp(s):
@@ -38,6 +43,9 @@ def load_data():
         'Screen Size (inches)': 'Screen_Size',
         'Price ($)': 'Price'
     }, inplace=True)
+
+    # Optional: fill or drop any missing values here if needed
+    df.fillna(0, inplace=True)
 
     return df
 
@@ -53,15 +61,17 @@ st.markdown("### 📊 Data Visualizations")
 col1, col2 = st.columns(2)
 
 with col1:
-    fig1, ax1 = plt.subplots()
+    fig1, ax1 = plt.subplots(figsize=(8, 5))
     sns.boxplot(data=data, x="Brand", y="Price", ax=ax1)
     ax1.set_title("Price Distribution by Brand")
+    plt.xticks(rotation=45)
     st.pyplot(fig1)
 
 with col2:
-    fig2, ax2 = plt.subplots()
+    fig2, ax2 = plt.subplots(figsize=(8, 5))
     sns.scatterplot(data=data, x="Total_Camera_MP", y="Price", hue="Brand", ax=ax2)
     ax2.set_title("Camera MP vs Price")
+    plt.xticks(rotation=45)
     st.pyplot(fig2)
 
 st.markdown("### ⚙️ Model Training")
@@ -72,7 +82,7 @@ y = data["Price"]
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize CatBoost Regressor with early stopping and more parameters
+# Initialize CatBoost Regressor with early stopping
 model = CatBoostRegressor(
     iterations=200,
     max_depth=2,
